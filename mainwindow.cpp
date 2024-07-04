@@ -47,8 +47,9 @@ void MainWindow::setupGameLayout() {
     guessHistory.clear();
 
     currentRow = 0;
+    int attempts = wordLength; // use word length as the number of attempts
 
-    for (int i = 0; i < 6; ++i) {
+    for (int i = 0; i < attempts; ++i) {
         QVector<QLineEdit*> row;
         for (int j = 0; j < wordLength; ++j) {
             QLineEdit *input = new QLineEdit(this);
@@ -56,13 +57,18 @@ void MainWindow::setupGameLayout() {
             input->setMaxLength(1);
             input->setAlignment(Qt::AlignCenter);
             input->setReadOnly(true);
-            input->setStyleSheet("font-size: 24px;");  // Increase font size
+            input->setStyleSheet("font-size: 24px;");
             gameLayout->addWidget(input, i, j);
             row.append(input);
+
+            connect(input, &QLineEdit::textChanged, this, &MainWindow::handleInputChange);
         }
         guessHistory.append(row);
     }
-    inputs = guessHistory[currentRow];
+
+    if (!guessHistory.isEmpty()) {
+        inputs = guessHistory[currentRow];
+    }
 }
 
 void MainWindow::clearLayout(QLayout* layout) {
@@ -93,26 +99,31 @@ void MainWindow::checkGuess() {
         return;
     }
 
+    if (!game->isValidWord(guess)) {
+        QMessageBox::warning(this, "Invalid Word", "Введенное слово некорректно!");
+        return;
+    }
+
     QString result = game->checkGuess(guess);
     QString formattedGuess = game->formatGuess(guess);
 
     if (result.contains("Congratulations")) {
-        QMessageBox::information(this, "Game Over", "Вы выиграли!");
+        QMessageBox::information(this, "Game Over", result);
         gameStarted = false;
         game->resetGame();
-        startNewGame();
+        setGameButtonsEnabled(true);
         return;
     } else if (game->isGameOver()) {
-        QMessageBox::information(this, "Game Over", "Попытки закончились. Слово было: " + game->getWord());
+        QMessageBox::information(this, "Game Over", result);
         gameStarted = false;
         game->resetGame();
-        startNewGame();
+        setGameButtonsEnabled(true);
         return;
     }
 
     updateGuessHistory(guess, formattedGuess);
     currentRow++;
-    if (currentRow < 6) {
+    if (currentRow < guessHistory.size()) {
         inputs = guessHistory[currentRow];
         for (QLineEdit *input : inputs) {
             input->setReadOnly(false);
@@ -124,6 +135,7 @@ void MainWindow::startNewGame() {
     gameStarted = true;
     game->resetGame();
     setupGameLayout();
+    setGameButtonsEnabled(false);
 
     for (QLineEdit *input : inputs) {
         input->setReadOnly(false);
@@ -133,7 +145,9 @@ void MainWindow::startNewGame() {
 void MainWindow::onWordLengthChanged(int index) {
     wordLength = wordLengthComboBox->itemData(index).toInt();
     game->setWordLength(wordLength);
-    startNewGame();
+    setupGameLayout();
+    setGameButtonsEnabled(true);
+    gameStarted = false;
 }
 
 void MainWindow::updateGuessHistory(const QString &guess, const QString &formattedGuess) {
@@ -148,4 +162,21 @@ void MainWindow::updateGuessHistory(const QString &guess, const QString &formatt
         }
         guessHistory[currentRow][i]->setReadOnly(true);
     }
+}
+
+void MainWindow::handleInputChange(const QString &text) {
+    QLineEdit *senderInput = qobject_cast<QLineEdit*>(sender());
+    if (!senderInput) return;
+
+    if (text.length() == 1) {
+        int index = inputs.indexOf(senderInput);
+        if (index < inputs.size() - 1) {
+            inputs[index + 1]->setFocus();
+        }
+    }
+}
+
+void MainWindow::setGameButtonsEnabled(bool enabled) {
+    wordLengthComboBox->setEnabled(enabled);
+    newGameButton->setEnabled(enabled);
 }

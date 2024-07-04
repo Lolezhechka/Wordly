@@ -3,29 +3,29 @@
 
 #include <QObject>
 #include <QString>
-#include <QStringList>
+#include <QVector>
 
 class Game : public QObject {
     Q_OBJECT
 
 public:
     explicit Game(QObject *parent = nullptr);
-    QString checkGuess(const QString &guess);
     void resetGame();
+    QString checkGuess(const QString &guess);
+    QString formatGuess(const QString &guess) const;
+    void setWordLength(int length);
+    bool isValidWord(const QString &word) const;
     bool isGameOver() const;
     QString getWord() const;
-    void setWordLength(int length);
-    QString formatGuess(const QString &guess) const;  // Переместите сюда
 
 private:
-    QString currentWord;
-    QStringList words;
-    int maxAttempts = 6;
-    int attemptsLeft;
-    int wordLength;
+    void loadWords();
+    void selectWord();
 
-    void selectNewWord();
-    void loadWordsFromFile();
+    QVector<QString> words;
+    QString currentWord;
+    int wordLength;
+    int attemptsLeft; // maximum number of attempts based on word length
 };
 
 #endif // GAME_H
